@@ -12,9 +12,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 
 # ── Page config ───────────────────────────────────────────────────────────────
+_favicon_path = Path(__file__).parent / "ProosPLogo.JPG"
 st.set_page_config(
     page_title="Proos Commodity Pricing Dashboard",
-    page_icon="📊",
+    page_icon=str(_favicon_path) if _favicon_path.exists() else "📊",
     layout="wide",
 )
 
