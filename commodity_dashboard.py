@@ -252,6 +252,9 @@ def build_price_prediction(cru_df, ss_df, al_series, price_unit, forecast_months
         model.fit(X, y)
         y_pred_hist = model.predict(X)
         rmse = float(np.sqrt(np.mean((y - y_pred_hist) ** 2)))
+        ss_res = np.sum((y - y_pred_hist) ** 2)
+        ss_tot = np.sum((y - np.mean(y)) ** 2)
+        r_squared = float(1 - ss_res / ss_tot) if ss_tot > 0 else 0.0
         ci_half = 1.96 * rmse
 
         future_rows = []
@@ -287,6 +290,7 @@ def build_price_prediction(cru_df, ss_df, al_series, price_unit, forecast_months
             "y_pred_hist": y_pred_hist,
             "forecast": future_df[["date", "pred", "lower", "upper"]],
             "rmse": rmse,
+            "r_squared": r_squared,
             "n_train": len(sub),
             "has_al": has_al,
             "has_ss_charge": has_ss_charge,
@@ -826,11 +830,13 @@ with tab_predict:
                 latest = float(hist_actual[-1])
                 next_pred = float(fc["pred"].iloc[0])
 
-                m1, m2, m3 = st.columns(3)
+                m1, m2, m3, m4 = st.columns(4)
                 m1.metric("Latest Actual ($/lb)", f"${latest:.4f}")
                 m2.metric("Next Month Forecast ($/lb)", f"${next_pred:.4f}", f"{next_pred - latest:+.4f}")
                 m3.metric("Model RMSE ($/lb)", f"${result['rmse']:.4f}",
                           f"{result['n_train']} training months", delta_color="off")
+                m4.metric("R² (Fit Quality)", f"{result['r_squared']:.4f}",
+                          help="Coefficient of determination: 1.0 = perfect fit, 0.0 = no better than the mean")
 
                 fig = go.Figure()
 
