@@ -126,7 +126,7 @@ def get_live_prices(period: str):
                 pass  # Fall through to fetch fresh data
 
     # Fetch fresh data from Yahoo Finance
-    tickers = {"Aluminum": "ALI=F"}
+    tickers = {"Aluminum": "ALI=F", "Nickel": "NI=F"}
     out = {}
     for name, sym in tickers.items():
         result = {}
@@ -395,12 +395,18 @@ with tab_overview:
         prem = cru_df["galvanized_price"].iloc[-1] - cru_df["steel_price"].iloc[-1]
         c6.metric(f"Galv. Premium over HRC ({price_unit})", f"${prem:,.2f}")
 
-    # Nickel — note: NI=F is delisted on Yahoo Finance; use LME or manual entry
-    c7.metric(
-        "Nickel — SS Cost Indicator",
-        "See lme.com",
-        help="LME Nickel is not available via Yahoo Finance. Check lme.com for daily prices.",
-    )
+    # Nickel (live)
+    ni_series = live_data.get("Nickel")
+    if ni_series is not None and len(ni_series) > 1:
+        ni_v = float(ni_series.iloc[-1])
+        ni_p = ((ni_v - float(ni_series.iloc[-2])) / float(ni_series.iloc[-2])) * 100
+        c7.metric("Nickel (live, $/metric ton)", f"${ni_v:,.0f}", f"{ni_p:+.2f}% DoD")
+    else:
+        c7.metric(
+            "Nickel — SS Cost Indicator",
+            "See lme.com",
+            help="NI=F unavailable via Yahoo Finance. Check lme.com for LME Nickel prices.",
+        )
 
     st.markdown("---")
     st.subheader("Recent CRU Entries")
