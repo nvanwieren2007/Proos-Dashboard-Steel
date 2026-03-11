@@ -790,9 +790,8 @@ with tab_entry:
 with tab_predict:
     st.subheader("🔮 Actual Price Prediction ($/lb)")
     st.caption(
-        "Ridge regression trained on your actual prices paid (1st-of-month snapshots). "
-        "Each commodity has its own model. "
-        "Confidence band = ±1.96 × in-sample RMSE (approximate 95% prediction interval)."
+        "Projections are the result of a ridge regression which was performed as the most "
+        "conservative estimating option in projecting future prices using current data and steel futures."
     )
 
     has_actual = cru_df[["avg_steel_price", "avg_galv_price", "avg_ss_price"]].notna().any().any()
