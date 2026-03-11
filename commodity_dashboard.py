@@ -24,6 +24,7 @@ BASE_DIR = Path(__file__).parent
 CRU_FILE = BASE_DIR / "cru_prices.csv"
 STAINLESS_FILE = BASE_DIR / "stainless_surcharges.csv"
 FUTURES_FILE = BASE_DIR / "cru_futures.csv"
+AL_CACHE_FILE = BASE_DIR / "al_price_cache.csv"
 LOGO_FILE = BASE_DIR / "Logo.png"
 
 # ── Logo ──────────────────────────────────────────────────────────────────────
@@ -99,10 +100,32 @@ def load_futures():
     return pruned
 
 
-@st.cache_data(ttl=3600)
 def get_live_prices(period: str):
-    """Fetch Aluminum futures via yfinance with a 15-second timeout."""
+    """
+    Fetch Aluminum futures via yfinance, with a 24-hour CSV-backed cache.
+    If the cache file exists and is less than 24 hours old, return cached data.
+    Otherwise fetch fresh data, save to CSV, and return it.
+    """
     import threading
+
+    # Return from CSV cache if fresh (< 24 hours old)
+    if AL_CACHE_FILE.exists():
+        cache_age = datetime.now().timestamp() - AL_CACHE_FILE.stat().st_mtime
+        if cache_age < 86400:  # 24 hours in seconds
+            try:
+                cached = pd.read_csv(AL_CACHE_FILE, index_col=0, parse_dates=True)
+                cached.index = pd.to_datetime(cached.index, utc=True).tz_localize(None)
+                out = {}
+                for col in cached.columns:
+                    s = cached[col].dropna()
+                    if not s.empty:
+                        out[col] = s
+                if out:
+                    return out
+            except Exception:
+                pass  # Fall through to fetch fresh data
+
+    # Fetch fresh data from Yahoo Finance
     tickers = {"Aluminum": "ALI=F"}
     out = {}
     for name, sym in tickers.items():
@@ -119,6 +142,16 @@ def get_live_prices(period: str):
         t.join(timeout=15)
         if "data" in result:
             out[name] = result["data"]
+
+    # Save to CSV cache if we got data
+    if out:
+        try:
+            cache_df = pd.DataFrame(out)
+            cache_df.index.name = "date"
+            cache_df.to_csv(AL_CACHE_FILE)
+        except Exception:
+            pass
+
     return out
 
 
@@ -288,6 +321,8 @@ with st.sidebar:
     )
     if st.button("🔄 Refresh Live Data"):
         st.cache_data.clear()
+        if AL_CACHE_FILE.exists():
+            AL_CACHE_FILE.unlink()
         st.rerun()
 
 # ── Live market data ──────────────────────────────────────────────────────────
