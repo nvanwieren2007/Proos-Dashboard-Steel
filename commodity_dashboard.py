@@ -330,7 +330,9 @@ live_data = get_live_prices(period=live_period)
 
 # ── Title ─────────────────────────────────────────────────────────────────────
 st.title("📊 Proos Commodity Pricing Dashboard")
-st.caption(f"Last refreshed: {datetime.now().strftime('%B %d, %Y  %I:%M %p')}")
+import zoneinfo as _zi
+_et_now = datetime.now(_zi.ZoneInfo("America/New_York"))
+st.caption(f"Last refreshed: {_et_now.strftime('%B %d, %Y  %I:%M %p')} ET")
 
 tab_overview, tab_charts, tab_entry, tab_predict = st.tabs(
     ["📈 Overview", "📉 Historical Charts", "✏️ Data Entry", "🔮 Price Prediction"]
