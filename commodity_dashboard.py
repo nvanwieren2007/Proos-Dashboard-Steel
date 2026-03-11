@@ -18,30 +18,12 @@ st.set_page_config(
     layout="wide",
 )
 
-# ── Password gate ─────────────────────────────────────────────────────────────
-def _check_password():
-    if st.session_state.get("authenticated"):
-        return
-    st.markdown("## \U0001f4ca Proos Commodity Pricing Dashboard")
-    st.markdown("Please enter the password to continue.")
-    pwd = st.text_input("Password", type="password", key="_pwd_input")
-    if st.button("Login"):
-        expected = st.secrets.get("password", "PROOS")
-        if pwd == expected:
-            st.session_state["authenticated"] = True
-            st.rerun()
-        else:
-            st.error("Incorrect password. Please try again.")
-    st.stop()
-
-_check_password()
-
 # ── File paths ────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent
 CRU_FILE = BASE_DIR / "cru_prices.csv"
 STAINLESS_FILE = BASE_DIR / "stainless_surcharges.csv"
 FUTURES_FILE = BASE_DIR / "cru_futures.csv"
-LOGO_FILE = BASE_DIR / "logo.png"
+LOGO_FILE = BASE_DIR / "Logo.png"
 
 # ── Logo ──────────────────────────────────────────────────────────────────────
 if LOGO_FILE.exists():
@@ -118,16 +100,24 @@ def load_futures():
 
 @st.cache_data(ttl=3600)
 def get_live_prices(period: str):
-    """Fetch Aluminum futures via yfinance. Nickel (NI=F) is delisted on Yahoo Finance."""
+    """Fetch Aluminum futures via yfinance with a 15-second timeout."""
+    import threading
     tickers = {"Aluminum": "ALI=F"}
     out = {}
     for name, sym in tickers.items():
-        try:
-            hist = yf.Ticker(sym).history(period=period)
-            if not hist.empty:
-                out[name] = hist["Close"].dropna()
-        except Exception:
-            pass
+        result = {}
+        def _fetch(s=sym, r=result):
+            try:
+                hist = yf.Ticker(s).history(period=period)
+                if not hist.empty:
+                    r["data"] = hist["Close"].dropna()
+            except Exception:
+                pass
+        t = threading.Thread(target=_fetch, daemon=True)
+        t.start()
+        t.join(timeout=15)
+        if "data" in result:
+            out[name] = result["data"]
     return out
 
 
