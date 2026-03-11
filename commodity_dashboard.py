@@ -102,13 +102,15 @@ def load_futures():
 
 def get_live_prices(period: str):
     """
-    Fetch Aluminum futures via yfinance, with a 24-hour CSV-backed cache.
-    If the cache file exists and is less than 24 hours old, return cached data.
-    Otherwise fetch fresh data, save to CSV, and return it.
+    Fetch Aluminum and Nickel futures via yfinance, with a 24-hour CSV-backed cache.
+    If the cache file exists, is less than 24 hours old, AND contains all expected
+    tickers, return cached data. Otherwise fetch fresh data, save to CSV, and return it.
     """
     import threading
 
-    # Return from CSV cache if fresh (< 24 hours old)
+    EXPECTED_TICKERS = {"Aluminum", "Nickel"}
+
+    # Return from CSV cache if fresh (< 24 hours old) and complete
     if AL_CACHE_FILE.exists():
         cache_age = datetime.now().timestamp() - AL_CACHE_FILE.stat().st_mtime
         if cache_age < 86400:  # 24 hours in seconds
@@ -120,7 +122,8 @@ def get_live_prices(period: str):
                     s = cached[col].dropna()
                     if not s.empty:
                         out[col] = s
-                if out:
+                # Only use cache if ALL expected tickers are present
+                if EXPECTED_TICKERS.issubset(out.keys()):
                     return out
             except Exception:
                 pass  # Fall through to fetch fresh data
@@ -143,7 +146,7 @@ def get_live_prices(period: str):
         if "data" in result:
             out[name] = result["data"]
 
-    # Save to CSV cache if we got data
+    # Save to CSV cache if we got any data
     if out:
         try:
             cache_df = pd.DataFrame(out)
